@@ -15,8 +15,12 @@ public class UICard : MonoBehaviour {
     [SerializeField] private TextMeshProUGUI valueText;
     [SerializeField] private GameObject heldText;
     [SerializeField] private Image deckImage;
+    [SerializeField] private GameObject coverImage;
 
     public IEnumerator AssignCard(Card card, Sprite suitSprite, Sprite cardTypeSprite, Sprite deckSprite, float timeMultiplier) {
+        DimCard(false);
+        Hold(false);
+        
         deckImage.sprite = deckSprite;
         deckImage.enabled = true;
 
@@ -38,5 +42,14 @@ public class UICard : MonoBehaviour {
     public void Hold() {
         isHeld = !isHeld;
         heldText.SetActive(isHeld);
+    }
+
+    public void Hold(bool set) {
+        isHeld = set;
+        heldText.SetActive(set);
+    }
+
+    public void DimCard(bool dim = true) {
+        coverImage.SetActive(dim);
     }
 }

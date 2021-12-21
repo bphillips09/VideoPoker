@@ -13,6 +13,7 @@ public class GameController : MonoBehaviour {
     [SerializeField] private Sprite[] cardTypeSprite;
     [SerializeField] private Sprite[] deckSprites;
     private Sprite currentDeckSprite;
+    private List<Card> badCards = null;
     private int handTurn = 0;
     private WinCondition gameOverCondition = WinCondition.YouLost;
     public TextMeshProUGUI debugText;
@@ -25,6 +26,9 @@ public class GameController : MonoBehaviour {
     void Initialize() {
         currentDeckSprite = deckSprites[Random.Range(0, deckSprites.Length)];
 
+        badCards = null;
+        gameOverCondition = WinCondition.YouLost;
+        debugText.text = "";
         handTurn = 0;
         deck = new List<Card>();
         currentHand = new List<Card>();
@@ -75,8 +79,7 @@ public class GameController : MonoBehaviour {
         if (handTurn < 2) {
             handTurn++;
         } else {
-            Debug.Log("reset");
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            Initialize();
         }
 
         //wait for 1 second for animation before hand analysis
@@ -118,12 +121,21 @@ public class GameController : MonoBehaviour {
                 .FirstOrDefault()
                 .numericValue == 11) {
                     
+                badCards = currentHand.Where(x => x.numericValue != 11).ToList();
+
                 gameOverCondition = WinCondition.JacksOrBetter;
+            } else {
+                badCards = currentHand.GroupBy(x => x.numericValue).Where(y => y.Count() == 1).SelectMany(x => x).ToList();
             }
         }
 
         //check for two pairs (if there are 2x of any 2 numbers)
         if (currentHand.GroupBy(x => x.numericValue).Count(y => y.Count() >= 2) == 2) {
+            badCards = currentHand.GroupBy(x => x.numericValue)
+                                  .Where(y => y.Count() < 2)
+                                  .SelectMany(x => x)
+                                  .ToList();
+
             gameOverCondition = WinCondition.TwoPair;
         }
 
@@ -131,13 +143,19 @@ public class GameController : MonoBehaviour {
         if (currentHand.GroupBy(x => x.numericValue).Any(y => y.Count() == 3)) {
             threeOfAKindExists = true;
 
+            badCards = currentHand.GroupBy(x => x.numericValue)
+                                  .Where(y => y.Count() != 3)
+                                  .SelectMany(x => x)
+                                  .ToList();
+
             gameOverCondition = WinCondition.ThreeOfAKind;
         }
 
         //check for a straight (if Ace is high and 10 isn't low, set Ace to low (1), then sort the hand and check distinct cards for increasing value)
         IEnumerable<Card> sortedHand = currentHand.OrderByDescending(x => x.numericValue);
-
+        bool setAceLow = false;
         if (sortedHand.Max(x => x.numericValue) == 14 && sortedHand.Min(x => x.numericValue) != 10) {
+            setAceLow = true;
             sortedHand.First().numericValue = 1;
             sortedHand = currentHand.OrderByDescending(x => x.numericValue);
         }
@@ -159,39 +177,72 @@ public class GameController : MonoBehaviour {
             }
 
             if (handIterator >= 4) {
+                badCards = null;
                 straightExists = true;
                 gameOverCondition = WinCondition.Straight;
             }
         }
 
+        if (setAceLow) {
+            sortedHand.First().numericValue = 14;
+        }
+
         //check for flush (only one type of suit in the hand)
         if (currentHand.GroupBy(x => x.suit).Count() == 1) {
+            badCards = null;
             flushExists = true;
             gameOverCondition = WinCondition.Flush;
         }
 
         //check for full house (1 pair of numbers and 1 set of three numbers)
         if (pairExists && threeOfAKindExists) {
+            badCards = null;
             gameOverCondition = WinCondition.FullHouse;
         }
 
         //check for any four (if there are 4x of the same number)
         if (currentHand.GroupBy(x => x.numericValue).Any(y => y.Count() == 4)) {
+            badCards = currentHand.GroupBy(x => x.numericValue)
+                                  .Where(y => y.Count() < 4)
+                                  .SelectMany(x => x)
+                                  .ToList();
+            
             gameOverCondition = WinCondition.FourOfAKind;
         }
 
         //check for straight flush
         if (straightExists && flushExists) {
+            badCards = null;
             gameOverCondition = WinCondition.StraightFlush;
         }
 
         //check for royal flush
         if (straightExists && flushExists && currentHand.Max(x => x.numericValue == 14)) {
+            badCards = null;
             gameOverCondition = WinCondition.RoyalFlush;
         }
 
+        if (handTurn == 1 && badCards != null) {
+            foreach (UICard card in gameCards) {
+                if (!badCards.Contains(card.referenceCard)) {
+                    card.Hold(true);
+                }
+            }
+        }
+
         if (handTurn == 2 || gameOverCondition != WinCondition.YouLost) {
-            debugText.text = $"{gameOverCondition.ToString()} - {(int)gameOverCondition} points!";
+            int points = (int)gameOverCondition;
+            debugText.text = $"{gameOverCondition.ToString()} - {points} points!";
+        }
+
+        if (handTurn == 2) {
+            if (badCards != null && gameOverCondition != WinCondition.YouLost) {
+                foreach (UICard card in gameCards) {
+                    if (badCards.Contains(card.referenceCard)) {
+                        card.DimCard();
+                    }
+                }
+            }
         }
     }
 }
