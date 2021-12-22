@@ -48,6 +48,10 @@ public class GameController : MonoBehaviour {
 
     //initialize the game / reset variables for a new hand
     void Initialize() {
+        if (betMultiplier > 5) {
+            betMultiplier = 5;
+        }
+
         resetBet = false;
         gameOverWindow.SetActive(false);
         betText.text = $"BET {betMultiplier}";
@@ -107,10 +111,19 @@ public class GameController : MonoBehaviour {
 
     //increment the bet as long as there are enough credits
     public void IncrementBet() {
-        if (handTurn >= 2 && !resetBet) {
+        if (betMultiplier > 5) {
+            betMultiplier = 5;
+        }
+
+        if (betMultiplier == 4) {
+            betOneButton.interactable = false;
+        }
+        
+        if (handTurn >= 2 && !resetBet && betMultiplier == 5) {
             resetBet = true;
             ResetBetMultiplier();
-            betMultiplier = 0;
+            betMultiplier = 1;
+            return;
         }
 
         if (betMultiplier+1 > credits || betMultiplier == 5) {
@@ -325,6 +338,9 @@ public class GameController : MonoBehaviour {
 
         //check for royal flush
         if (straightExists && flushExists && currentHand.Max(x => x.numericValue == 14)) {
+            if (betMultiplier == 5) {
+                betMultiplier = 16;
+            }
             badCards = null;
             gameOverCondition = WinCondition.RoyalFlush;
         }
@@ -335,6 +351,10 @@ public class GameController : MonoBehaviour {
                 if (!badCards.Contains(card.referenceCard)) {
                     card.Hold(true);
                 }
+            }
+        } else if (handTurn == 1 && badCards == null && gameOverCondition != WinCondition.YouLost) {
+            foreach (UICard card in gameCards) {
+                card.Hold(true);
             }
         }
 
