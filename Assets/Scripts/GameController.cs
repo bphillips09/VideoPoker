@@ -17,13 +17,17 @@ public class GameController : MonoBehaviour {
     [SerializeField] private Image[] betMultiplierImages;
     [SerializeField] private Color betSelectedColor;
     [SerializeField] private Color betInactiveColor;
+    [SerializeField] private Color textColor;
     [SerializeField] private TextMeshProUGUI betText;
     [SerializeField] private TextMeshProUGUI winText;
+    [SerializeField] private TextMeshProUGUI pointsText;
     [SerializeField] private TextMeshProUGUI creditsText;
     [SerializeField] private GameObject gameOverWindow;
     [SerializeField] private GameObject resetWindow;
     [SerializeField] private Button betOneButton;
     [SerializeField] private Button betMaxButton;
+    [SerializeField] private TextMeshProUGUI[] topTextElements;
+    private Array enumArray = null;
     private bool resetBet = false;
     private bool firstLaunch = true;
     private List<Card> deck;
@@ -36,6 +40,9 @@ public class GameController : MonoBehaviour {
     private WinCondition gameOverCondition = WinCondition.YouLost;
 
     void Start() {
+        enumArray = Enum.GetValues(gameOverCondition.GetType());
+        Array.Reverse(enumArray);
+
         Initialize();
     }
 
@@ -46,9 +53,15 @@ public class GameController : MonoBehaviour {
         betText.text = $"BET {betMultiplier}";
         creditsText.text = $"CREDITS {credits}";
         winText.text = "";
+        pointsText.text = "";
 
         if (firstLaunch || betMultiplier > credits) {
             ResetBetMultiplier();
+        }
+
+        //remove colored lines using regex to remove <color> tags
+        foreach (TextMeshProUGUI pointsTextElement in topTextElements) {
+            pointsTextElement.text = Regex.Replace(pointsTextElement.text, "<[^>]*>", "");
         }
 
         currentDeckSprite = deckSprites[Random.Range(0, deckSprites.Length)];
@@ -80,6 +93,7 @@ public class GameController : MonoBehaviour {
         PlayHand();
     }
 
+    //reset the bet back to 1
     void ResetBetMultiplier() {
         firstLaunch = false;
 
@@ -96,17 +110,22 @@ public class GameController : MonoBehaviour {
         if (handTurn >= 2 && !resetBet) {
             resetBet = true;
             ResetBetMultiplier();
+            betMultiplier = 0;
         }
 
         if (betMultiplier+1 > credits || betMultiplier == 5) {
             return;
         }
 
-        betMultiplierImages[betMultiplier-1].color = betInactiveColor;
+        if (betMultiplier > 0) {
+            betMultiplierImages[betMultiplier-1].color = betInactiveColor;
+        }
+
         UpdateBetMultiplier(betMultiplier+1);
         betMultiplierImages[betMultiplier-1].color = betSelectedColor;
     }
 
+    //set the max bet based on credits remaining then play a new hand
     public void MaxBet() {
         int count = 1;
 
@@ -123,6 +142,7 @@ public class GameController : MonoBehaviour {
         PlayHand();
     }
 
+    //play a new hand
     void PlayHand() {
         if (handTurn == 0) {
             if (credits < betMultiplier) {
@@ -233,11 +253,12 @@ public class GameController : MonoBehaviour {
             gameOverCondition = WinCondition.ThreeOfAKind;
         }
 
-        //check for a straight (if Ace is high and 10 isn't low, set Ace to low (1), then sort the hand and check distinct cards for increasing value)
+        //check for a straight
         IEnumerable<Card> sortedHand = currentHand.OrderByDescending(x => x.numericValue);
         bool setAceLow = false;
         Card aceCard = null;
 
+        //if Ace is high and 10 isn't low, set Ace to low (1), then sort the hand and check distinct cards for increasing value
         if (sortedHand.Max(x => x.numericValue) == 14 && sortedHand.Min(x => x.numericValue) != 10) {
             setAceLow = true;
             aceCard = sortedHand.First();
@@ -268,6 +289,7 @@ public class GameController : MonoBehaviour {
             }
         }
 
+        //set ace back to high value
         if (setAceLow) {
             aceCard.numericValue = 14;
         }
@@ -329,6 +351,7 @@ public class GameController : MonoBehaviour {
             }
         }
         
+        //show win condition text
         if (handTurn != 2 && gameOverCondition != WinCondition.YouLost) {
             winText.text = EnumToSpacedString(gameOverCondition);
         }
@@ -340,14 +363,17 @@ public class GameController : MonoBehaviour {
         betOneButton.interactable = true;
         betMaxButton.interactable = true;
 
+        //give player points and show win amount
         int points = (int)gameOverCondition * betMultiplier;
         if (points > 0) {
             AddToCredits(points);
-            winText.text = $"{EnumToSpacedString(gameOverCondition)} - WIN {points}";
-            int textIndex = Array.IndexOf(Enum.GetValues(gameOverCondition.GetType()), gameOverCondition);
+            winText.text = $"{EnumToSpacedString(gameOverCondition)}";
+            pointsText.text = $"WIN {points}";
+            int textIndex = Array.IndexOf(enumArray, gameOverCondition);
             ShowWinPointText(textIndex);
         }
 
+        //ask for reset when out of money
         if (credits == 0) {
             PromptForReset();
         }
@@ -361,6 +387,7 @@ public class GameController : MonoBehaviour {
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
+    //turn enum ("JacksOrBetter") into spaced string ("Jacks Or Better")
     string EnumToSpacedString(WinCondition enumCondition) {
         return Regex.Replace(enumCondition.ToString(), "([A-Z])", " $1").Trim();
     }
@@ -370,8 +397,21 @@ public class GameController : MonoBehaviour {
         creditsText.text = $"CREDITS {credits}";
     }
 
+    //highlight the winning condition in the points text at the top based on the enum index
     void ShowWinPointText(int index) {
-        //
+        if (index == 0) {
+            return;
+        }
+
+        List<string[]> stringLines = topTextElements.Select(x => x.text.Split('\n')).ToList();
+
+        //highlight first column and bet column
+        stringLines[0][index] = $"<color=white>{stringLines[0][index]}</color>";
+        stringLines[betMultiplier][index] = $"<color=white>{stringLines[betMultiplier][index]}</color>";
+
+        for (int i = 0; i < topTextElements.Length; i++) {
+            topTextElements[i].text = string.Join("\n", stringLines[i]);
+        }
     }
 }
 

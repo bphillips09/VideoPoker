@@ -17,6 +17,7 @@ public class UICard : MonoBehaviour {
     [SerializeField] private Image deckImage;
     [SerializeField] private GameObject coverImage;
 
+    //assign UI card based on deck card
     public IEnumerator AssignCard(Card card, Sprite suitSprite, Sprite cardTypeSprite, Sprite deckSprite, float timeMultiplier) {
         DimCard(false);
         Hold(false);
