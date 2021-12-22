@@ -604,6 +604,7 @@ MonoBehaviour:
   heldText: {fileID: 5904685951200964262}
   deckImage: {fileID: 5541184677539178050}
   coverImage: {fileID: 7862676553982047581}
+  gameController: {fileID: 0}
 --- !u!114 &7363620502532242713
 MonoBehaviour:
   m_ObjectHideFlags: 0

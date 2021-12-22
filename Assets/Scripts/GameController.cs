@@ -27,6 +27,8 @@ public class GameController : MonoBehaviour {
     [SerializeField] private Button betOneButton;
     [SerializeField] private Button betMaxButton;
     [SerializeField] private TextMeshProUGUI[] topTextElements;
+    [SerializeField] private AudioSource audioController;
+    [SerializeField] private AudioClip[] audioClips;
     private Array enumArray = null;
     private bool resetBet = false;
     private bool firstLaunch = true;
@@ -38,6 +40,7 @@ public class GameController : MonoBehaviour {
     private List<Card> badCards = null;
     private int handTurn = 0;
     private WinCondition gameOverCondition = WinCondition.YouLost;
+    private bool handActive = false;
 
     void Start() {
         enumArray = Enum.GetValues(gameOverCondition.GetType());
@@ -48,6 +51,7 @@ public class GameController : MonoBehaviour {
 
     //initialize the game / reset variables for a new hand
     void Initialize() {
+        //bet multiplier is 1-5 unless royal flush when it's 5, then set it to 16 for 4000pts
         if (betMultiplier > 5) {
             betMultiplier = 5;
         }
@@ -111,6 +115,8 @@ public class GameController : MonoBehaviour {
 
     //increment the bet as long as there are enough credits
     public void IncrementBet() {
+        ButtonClick();
+
         if (betMultiplier > 5) {
             betMultiplier = 5;
         }
@@ -140,6 +146,8 @@ public class GameController : MonoBehaviour {
 
     //set the max bet based on credits remaining then play a new hand
     public void MaxBet() {
+        ButtonClick();
+
         int count = 1;
 
         while (count < credits && count < 5) {
@@ -148,11 +156,23 @@ public class GameController : MonoBehaviour {
             UpdateBetMultiplier(count);
             betMultiplierImages[count-1].color = betSelectedColor;
         }
-        PlayHand();
+        
+        DrawHand();
     }
 
     public void DrawHand() {
-        PlayHand();
+        ButtonClick();
+
+        //don't play a new hand while one is currently being animated
+        if (handActive) {
+            return;
+        }
+
+        if (handTurn < 2) {
+            PlayHand();
+        } else {
+            Initialize();
+        }
     }
 
     //play a new hand
@@ -167,6 +187,8 @@ public class GameController : MonoBehaviour {
             betOneButton.interactable = false;
             betMaxButton.interactable = false;
         }
+
+        handActive = true;
 
         //select 5 "random" cards and show them to the player
         for (int i = 0; i < gameCards.Length; i++) {
@@ -187,8 +209,6 @@ public class GameController : MonoBehaviour {
 
         if (handTurn < 2) {
             handTurn++;
-        } else {
-            Initialize();
         }
 
         //wait for 1 second for animation before hand analysis
@@ -374,7 +394,10 @@ public class GameController : MonoBehaviour {
         //show win condition text
         if (handTurn != 2 && gameOverCondition != WinCondition.YouLost) {
             winText.text = EnumToSpacedString(gameOverCondition);
+            PlayAudioClip(2);
         }
+
+        handActive = false;
     }
 
     void GameOver() {
@@ -391,6 +414,7 @@ public class GameController : MonoBehaviour {
             pointsText.text = $"WIN {points}";
             int textIndex = Array.IndexOf(enumArray, gameOverCondition);
             ShowWinPointText(textIndex);
+            PlayAudioClip(3);
         }
 
         //ask for reset when out of money
@@ -404,6 +428,8 @@ public class GameController : MonoBehaviour {
     }
 
     public void ResetGame() {
+        ButtonClick();
+
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
@@ -432,6 +458,18 @@ public class GameController : MonoBehaviour {
         for (int i = 0; i < topTextElements.Length; i++) {
             topTextElements[i].text = string.Join("\n", stringLines[i]);
         }
+    }
+
+    public void ButtonClick() {
+        PlayAudioClip(0);
+    }
+
+    public void PlayCardSound() {
+        PlayAudioClip(1);
+    }
+
+    public void PlayAudioClip(int clipIndex) {
+        audioController.PlayOneShot(audioClips[clipIndex]);
     }
 }
 

@@ -16,6 +16,7 @@ public class UICard : MonoBehaviour {
     [SerializeField] private GameObject heldText;
     [SerializeField] private Image deckImage;
     [SerializeField] private GameObject coverImage;
+    [SerializeField] private GameController gameController;
 
     //assign UI card based on deck card
     public IEnumerator AssignCard(Card card, Sprite suitSprite, Sprite cardTypeSprite, Sprite deckSprite, float timeMultiplier) {
@@ -36,11 +37,15 @@ public class UICard : MonoBehaviour {
         cardType.sprite = cardTypeSprite;
         cardType.enabled = cardTypeSprite != null;
 
-        yield return new WaitForSeconds(timeMultiplier/5.5f);
+        //wait for 1/4s then show card after time based on order in hand
+        yield return new WaitForSeconds(0.25f + (timeMultiplier*0.15f));
+        
+        gameController.PlayCardSound();
         deckImage.enabled = false;
     }
 
     public void Hold() {
+        gameController.ButtonClick();
         isHeld = !isHeld;
         heldText.SetActive(isHeld);
     }
