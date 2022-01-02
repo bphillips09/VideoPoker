@@ -56,6 +56,10 @@ public class GameController : MonoBehaviour {
             betMultiplier = 5;
         }
 
+        foreach (UICard card in gameCards) {
+            card.GetComponent<Button>().interactable = true;
+        }
+
         resetBet = false;
         gameOverWindow.SetActive(false);
         betText.text = $"BET {betMultiplier}";
@@ -405,6 +409,10 @@ public class GameController : MonoBehaviour {
 
         betOneButton.interactable = true;
         betMaxButton.interactable = true;
+
+        foreach (UICard card in gameCards) {
+            card.GetComponent<Button>().interactable = false;
+        }
 
         //give player points and show win amount
         int points = (int)gameOverCondition * betMultiplier;
